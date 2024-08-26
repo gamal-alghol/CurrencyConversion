@@ -44,8 +44,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,19 +58,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gamal.currencyconversion.R
 import com.gamal.currencyconversion.allCurrencyScreen.RetrySection
-import com.gamal.currencyconversion.allCurrencyScreen.allCurrencyScreen
+import com.gamal.currencyconversion.allCurrencyScreen.AllCurrencyScreen
 import com.gamal.currencyconversion.data.local.DataStoreHelper
 import com.gamal.currencyconversion.data.model.CurrencyConversion
 import com.gamal.currencyconversion.data.model.SaveConvertCurrencys
@@ -84,7 +81,9 @@ import com.gamal.currencyconversion.ui.theme.dividerColor
 import com.gamal.currencyconversion.ui.theme.primaryColor
 import com.gamal.currencyconversion.ui.theme.hintTextColor
 import com.gamal.currencyconversion.ui.HomeScreen.viewModel.CurrencyConvertedViewModel
+import com.gamal.currencyconversion.ui.HomeScreen.viewModel.VarViewModel
 import com.gamal.currencyconversion.ui.intent.CurrencyViewIntent
+import com.gamal.currencyconversion.ui.theme.MyCustomFont
 import com.gamal.currencyconversion.util.ProjectConstants
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -92,33 +91,34 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
-var bottomSheetOpenType by mutableStateOf("")
-var editCurrency by mutableStateOf(0)
-var size by mutableIntStateOf(0)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Destination
 fun HomeScreen(navController: DestinationsNavigator){
     val dataStore= DataStoreHelper(LocalContext.current)
-    getConvertedCurrency(dataStore, CurrencyConvertedViewModel(),navController)
-  }
+    val varViewModel: VarViewModel =viewModel()
+    GetConvertedCurrency(dataStore, CurrencyConvertedViewModel(),navController,varViewModel)
+}
 
 
 @Composable
-fun BottomSheetCurrency(navController: DestinationsNavigator) {
-    Log.d("ttt", editCurrency.toString())
-allCurrencyScreen(navController = navController, screen = bottomSheetOpenType, editCurrency = editCurrency)
+fun BottomSheetCurrency(navController: DestinationsNavigator, varViewModel: VarViewModel) {
+    val  bottomSheetOpenType by varViewModel.bottomSheetOpenType.collectAsStateWithLifecycle("")
+    val  editCurrency by varViewModel.editCurrency.collectAsStateWithLifecycle(0)
+    AllCurrencyScreen(navController = navController, screen = bottomSheetOpenType, editCurrency = editCurrency)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardConvert(
-    myCustomFont: FontFamily,
     scope: CoroutineScope,
     scaffoldState: BottomSheetScaffoldState,
     dataStore: DataStoreHelper,
-    value: List<CurrencyConversion?>
-) {
+    value: List<CurrencyConversion?>,
+    varViewModel: VarViewModel,
+
+    ) {
     Card (modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp),
@@ -129,11 +129,11 @@ fun CardConvert(
         Column {
             var amount by remember { mutableStateOf("1") }
 
-            baseCurrency(myCustomFont,scope,scaffoldState,dataStore,amount){ newText ->
+            BaseCurrency( scope,scaffoldState,dataStore,amount,varViewModel){ newText ->
                 amount = newText
             }
-            divider()
-            convertedAmount(myCustomFont,scope,scaffoldState,dataStore,value, amount, context = LocalContext.current)
+            Divider()
+            convertedAmount(scope,scaffoldState,dataStore,value, amount, context = LocalContext.current,varViewModel)
 
         }
 
@@ -142,50 +142,52 @@ fun CardConvert(
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun rememberSwipeDismissBoxState(
+fun RememberSwipeDismissBoxState(
     context: Context,
     currency: SaveConvertCurrencys,
     dataStore: DataStoreHelper,
     scope: CoroutineScope,
+    varViewModel: VarViewModel,
 ): SwipeToDismissBoxState {
-        val dismissState = rememberSwipeToDismissBoxState(
-            confirmValueChange = { dismissValue ->
-                Log.d("ttt", size.toString())
-                if (dismissValue == SwipeToDismissBoxValue.StartToEnd&&size>1) {
-                    scope.launch {
-                        dataStore.deleteConvertCurrency(currency)
-                        Toast.makeText(context, "${currency.code} deleted", Toast.LENGTH_SHORT).show()
-                    }
-                    true
-                } else {
-                    false
-                }
-            }
-        )
+    val  size by varViewModel.size.collectAsStateWithLifecycle(0)
 
-return dismissState
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            Log.d("ttt", size.toString())
+            if (dismissValue == SwipeToDismissBoxValue.StartToEnd&&size>1) {
+                scope.launch {
+                    dataStore.deleteConvertCurrency(currency)
+                    Toast.makeText(context, "${currency.code} deleted", Toast.LENGTH_SHORT).show()
+                }
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    return dismissState
 
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun convertedAmount(
-    myCustomFont: FontFamily,
+
     scope: CoroutineScope,
     scaffoldState: BottomSheetScaffoldState,
     dataStore: DataStoreHelper,
     value: List<CurrencyConversion?>,
-   amount: String,
-    context: Context
+    amount: String,
+    context: Context,
+    varViewModel: VarViewModel,
 ) {
-    Text(modifier = Modifier.padding(top = 24.dp, start = 24.dp),fontFamily = myCustomFont,text = stringResource(id = R.string.ConvertedAmount), color = hintTextColor, fontSize = 15.sp)
+    Text(modifier = Modifier.padding(top = 24.dp, start = 24.dp),fontFamily = MyCustomFont(),text = stringResource(id = R.string.ConvertedAmount), color = hintTextColor, fontSize = 15.sp)
 
-    val convertCurrencysList by dataStore.getConvertCurrencys.collectAsState(initial = emptyArray())
-    val baseCurrency= dataStore.getBaseCurrency.collectAsState(initial = "").value
+    val convertCurrencysList by dataStore.getConvertCurrencys.collectAsStateWithLifecycle( emptyArray())
+    val baseCurrency= dataStore.getBaseCurrency.collectAsStateWithLifecycle( "").value
+varViewModel.setSize( convertCurrencysList.size)
 
-     size=  convertCurrencysList.size
-
-    Log.d("ttt",size.toString()+"//sizq"+convertCurrencysList.size)
     LazyColumn(state = rememberLazyListState()) {
 
         items(
@@ -193,7 +195,7 @@ fun convertedAmount(
             key = { it.code } // Unique key for each item based on its code
         ) { currencyItem ->
             val currency by rememberUpdatedState(currencyItem)
-            val dismissState = rememberSwipeDismissBoxState(context = context, currency = currency, dataStore = dataStore, scope =scope)
+            val dismissState = RememberSwipeDismissBoxState(context = context, currency = currency, dataStore = dataStore, scope =scope,varViewModel)
 
             SwipeToDismissBox(
                 state =dismissState,
@@ -219,18 +221,18 @@ fun convertedAmount(
                                 .padding(start = 8.dp)
                                 .clickable {
                                     scope.launch {
-                                        bottomSheetOpenType = ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY
-                                        editCurrency = convertCurrencysList.indexOf(currency)
+                                        varViewModel.setBottomSheetOpenType(ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY)
+                                        varViewModel.setEditCurrency( convertCurrencysList.indexOf(currency))
                                         scaffoldState.bottomSheetState.expand()
                                     }
-                                },fontFamily = myCustomFont,text = currency.code, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
+                                },fontFamily = MyCustomFont(),text = currency.code, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
                             Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = "", tint =hintTextColor,
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clickable {
                                         scope.launch {
-                                            editCurrency =convertCurrencysList.indexOf(currency)
-                                            bottomSheetOpenType = ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY
+                                            varViewModel.setEditCurrency( convertCurrencysList.indexOf(currency))
+                                            varViewModel.setBottomSheetOpenType(ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY)
                                             scaffoldState.bottomSheetState.expand()
                                         }
                                     })
@@ -271,7 +273,7 @@ fun DismissBackground(dismissState: SwipeToDismissBoxState) {
             .background(color)
             .padding(32.dp),
 
-    ) {
+        ) {
         Icon(
             Icons.Default.Delete,
             contentDescription = "delete",
@@ -281,13 +283,16 @@ fun DismissBackground(dismissState: SwipeToDismissBoxState) {
     }
 }
 @Composable
-fun getConvertedCurrency(
+fun GetConvertedCurrency(
     dataStore: DataStoreHelper,
     viewModel: CurrencyConvertedViewModel,
-    navController: DestinationsNavigator
-) {
-    val state by viewModel.viewState.collectAsState()
-   var baseCurrency= dataStore.getBaseCurrency.collectAsState(initial = "").value
+    navController: DestinationsNavigator,
+    varViewModel: VarViewModel,
+
+    ) {
+
+    val state by viewModel.viewState.collectAsStateWithLifecycle()
+    var baseCurrency= dataStore.getBaseCurrency.collectAsStateWithLifecycle( "").value
     LaunchedEffect(baseCurrency) {
         viewModel.sendIntent(CurrencyViewIntent.getConvertCurrency(baseCurrency = baseCurrency))
     }
@@ -304,7 +309,7 @@ fun getConvertedCurrency(
 
         state.currenciesConverted.isNotEmpty() -> {
 
-            showUi( viewModel.currencyConvertdList.value,navController,dataStore)
+            ShowUi( viewModel.currencyConvertdList.value,navController,dataStore,varViewModel)
 
         }
         state.error != null -> {
@@ -321,18 +326,20 @@ fun getConvertedCurrency(
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun showUi(
+fun ShowUi(
     value: List<CurrencyConversion?>,
     navController: DestinationsNavigator,
-    dataStore: DataStoreHelper
-) {
-    val myCustomFont = FontFamily(Font(R.font.poppins_bold, FontWeight.Bold))
+    dataStore: DataStoreHelper,
+    varViewModel: VarViewModel,
+
+    ) {
+
     val scaffoldState = rememberBottomSheetScaffoldState()
     val scope = rememberCoroutineScope()
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetContent = { BottomSheetCurrency(navController) },
+        sheetContent = { BottomSheetCurrency(navController,varViewModel) },
         sheetPeekHeight = 0.dp
     ) {
         Box(
@@ -341,78 +348,82 @@ fun showUi(
                 .padding(24.dp)
                 .fillMaxSize()
         ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
-                .fillMaxSize()
-        ) {
-
-            Text(
-                modifier = Modifier.padding(top = 24.dp),
-                fontFamily = myCustomFont,
-                text = stringResource(id = R.string.CurrencyConverter),
-                color = primaryColor,
-                textAlign = TextAlign.Center,
-                fontSize = 25.sp
-            )
-            Text(
-                modifier = Modifier.padding(top = 8.dp),
-                fontFamily = myCustomFont,
-                text = stringResource(id = R.string.Checkliverates),
-                color = hintTextColor,
-                textAlign = TextAlign.Center,
-                fontSize = 16.sp
-            )
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
+                    .fillMaxSize()
             ) {
-                CardConvert(myCustomFont, scope, scaffoldState, dataStore, value)
-                Image(
-                    painter = painterResource(id = R.drawable.add),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset( y = (20).dp)
-                        .clickable {
-                            bottomSheetOpenType = ProjectConstants.BOTTOM_SHEET_SCREEN_ADD
-                            scope.launch { scaffoldState.bottomSheetState.expand() }
-                        }
+
+                Text(
+                    modifier = Modifier.padding(top = 24.dp),
+                    fontFamily = MyCustomFont(),
+                    text = stringResource(id = R.string.CurrencyConverter),
+                    color = primaryColor,
+                    textAlign = TextAlign.Center,
+                    fontSize = 25.sp
                 )
+                Text(
+                    modifier = Modifier.padding(top = 8.dp),
+                    fontFamily = MyCustomFont(),
+                    text = stringResource(id = R.string.Checkliverates),
+                    color = hintTextColor,
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+                Box(
+                    contentAlignment = Alignment.BottomEnd,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CardConvert( scope, scaffoldState, dataStore, value,varViewModel)
+                    Image(
+                        painter = painterResource(id = R.drawable.add),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = (20).dp)
+                            .clickable {
 
+                                scope.launch {
+                                    varViewModel.setBottomSheetOpenType(ProjectConstants.BOTTOM_SHEET_SCREEN_ADD)
+                                    scaffoldState.bottomSheetState.expand()
+                                }
+                            }
+                    )
+
+                }
             }
-        }
 
-    }
+        }
     }
 }
 
 
 
 @Composable
-fun divider() {
-Box(modifier = Modifier.padding(top = 24.dp)){
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .height(1.dp)
-        .align(Alignment.Center)
-        .padding(start = 24.dp, end = 24.dp)
-        .background(color = dividerColor))
+fun Divider() {
+    Box(modifier = Modifier.padding(top = 24.dp)){
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .align(Alignment.Center)
+            .padding(start = 24.dp, end = 24.dp)
+            .background(color = dividerColor))
 
-    Image(painter = painterResource(id = R.drawable.divid_convert) , contentDescription ="", modifier = Modifier.align(Alignment.Center)  )
-}
+        Image(painter = painterResource(id = R.drawable.divid_convert) , contentDescription ="", modifier = Modifier.align(Alignment.Center)  )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun baseCurrency(
-    myCustomFont: FontFamily,
+fun BaseCurrency(
     scope: CoroutineScope,
     scaffoldState: BottomSheetScaffoldState,
     dataStore: DataStoreHelper,
     amount: String,
-    onAmountChange: (String) -> Unit
-) {
-    Text(modifier = Modifier.padding(top = 24.dp, start = 24.dp),fontFamily = myCustomFont,text = stringResource(id = R.string.BaseCurrency), color = hintTextColor, fontSize = 15.sp)
+    varViewModel: VarViewModel,
+    onAmountChange: (String) -> Unit,
+
+    ) {
+    Text(modifier = Modifier.padding(top = 24.dp, start = 24.dp),fontFamily = MyCustomFont(),text = stringResource(id = R.string.BaseCurrency), color = hintTextColor, fontSize = 15.sp)
     Row (modifier = Modifier.padding(top = 8.dp, start = 24.dp), verticalAlignment = Alignment.CenterVertically){
         val baseCurrencyImageState = dataStore.getBaseCurrencyImage.collectAsState(initial = "")
         val baseCurrencyImage = baseCurrencyImageState.value
@@ -421,7 +432,7 @@ fun baseCurrency(
             contentDescription = "",
             onSuccess = {success->
                 val drawable = success.result.drawable
-                 },
+            },
             modifier = Modifier
                 .clip(CircleShape)
                 .size(50.dp)
@@ -435,10 +446,11 @@ fun baseCurrency(
             .padding(start = 8.dp)
             .clickable {
                 scope.launch {
-                    bottomSheetOpenType = ProjectConstants.BOTTOM_SHEET_SCREEN_BASE
+                    varViewModel.setBottomSheetOpenType(ProjectConstants.BOTTOM_SHEET_SCREEN_BASE)
+
                     scaffoldState.bottomSheetState.expand()
                 }
-            }, fontFamily = myCustomFont, text = baseCurrency, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
+            }, fontFamily = MyCustomFont(), text = baseCurrency, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
         Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = "", tint =hintTextColor,
             modifier = Modifier
                 .size(24.dp)
@@ -455,7 +467,7 @@ fun baseCurrency(
             maxLines = 1,
             singleLine = true,
             textStyle = TextStyle(fontSize = 18.sp),
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),  // Set the keyboard type to number
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),  // Set the keyboard type to number
             label = { Text(stringResource(id = R.string.Amount)) },  // Use placeholder instead of decorationBox
             modifier = Modifier
                 .padding(start = 24.dp, end = 24.dp)
@@ -466,7 +478,7 @@ fun baseCurrency(
 
 
     }
- 
+
 
 }
 

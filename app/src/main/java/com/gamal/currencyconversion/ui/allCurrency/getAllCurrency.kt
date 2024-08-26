@@ -1,5 +1,6 @@
 package com.gamal.currencyconversion.allCurrencyScreen
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import com.gamal.currencyconversion.data.model.SaveConvertCurrencys
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -41,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gamal.currencyconversion.R
@@ -52,9 +55,8 @@ import com.gamal.currencyconversion.ui.theme.hintTextColor
 import com.gamal.currencyconversion.ui.theme.primaryColor
 import com.gamal.currencyconversion.ui.intent.CurrencyViewIntent
 import com.gamal.currencyconversion.ui.BaseCurrencyScreen.viewModel.BaseCurrencyViewModel
-import com.gamal.currencyconversion.ui.destinations.BaseCurrencyScreenDestination
 import com.gamal.currencyconversion.ui.destinations.HomeScreenDestination
-import com.gamal.currencyconversion.ui.destinations.SplashScreenDestination
+import com.gamal.currencyconversion.ui.theme.MyCustomFont
 import com.gamal.currencyconversion.util.ProjectConstants
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.GlobalScope
@@ -62,8 +64,8 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun allCurrencyScreen(screen: String, viewModel: BaseCurrencyViewModel = androidx.lifecycle.viewmodel.compose.viewModel(), navController: DestinationsNavigator, editCurrency:Int?=null) {
-    val state by viewModel.viewState.collectAsState()
+fun AllCurrencyScreen(screen: String, viewModel: BaseCurrencyViewModel = androidx.lifecycle.viewmodel.compose.viewModel(), navController: DestinationsNavigator, editCurrency:Int?=null) {
+    val state by viewModel.viewState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.sendIntent(CurrencyViewIntent.getAllCurrency)
@@ -81,8 +83,8 @@ fun allCurrencyScreen(screen: String, viewModel: BaseCurrencyViewModel = android
         state.currencies.isNotEmpty() -> {
 
             Column(modifier = Modifier.fillMaxSize()) {
-                searchTextFailed(viewModel)
-                CurrencyList(currencies =viewModel.CurrencyList,navController,screen,editCurrency)
+                SearchTextFailed(viewModel)
+                CurrencyList(currencies =viewModel.CurrencyList.value,navController,screen,editCurrency)
 
             }
         }
@@ -98,7 +100,7 @@ fun allCurrencyScreen(screen: String, viewModel: BaseCurrencyViewModel = android
 
 @Composable
 fun CurrencyList(
-    currencies: MutableState<List<Currency>>,
+    currencies: List<Currency>,
     navController: DestinationsNavigator,
     screen: String,
     editCurrency: Int?
@@ -106,8 +108,8 @@ fun CurrencyList(
     LazyColumn (modifier = Modifier
         .padding(top = 8.dp)
         .fillMaxSize()){
-        items(currencies.value.size){
-            CurrencyEntry(currencies.value[it],navController,screen,editCurrency)
+        items(currencies){
+            CurrencyEntry(it,navController,screen,editCurrency)
         }
     }
 
@@ -121,35 +123,49 @@ fun CurrencyEntry(
     editCurrency: Int?
 ) {
     val dataStore=DataStoreHelper(LocalContext.current)
-Column (Modifier.fillMaxWidth().clickable {
-    navController.popBackStack()
+Column (
+    Modifier
+        .fillMaxWidth()
+        .clickable {
+            navController.popBackStack()
 
-    when (screen){
+            when (screen) {
 
-        ProjectConstants.BASE_SCREEN,
-        ProjectConstants.BOTTOM_SHEET_SCREEN_BASE->{
-            GlobalScope.launch{
-                dataStore.saveBaseCurrency(currency.currencyCode)
-                dataStore.saveBaseCurrencyImage(currency.icon)
+                ProjectConstants.BASE_SCREEN,
+                ProjectConstants.BOTTOM_SHEET_SCREEN_BASE -> {
+                    GlobalScope.launch {
+                        dataStore.saveBaseCurrency(currency.currencyCode)
+                        dataStore.saveBaseCurrencyImage(currency.icon)
+                    }
+
+                }
+
+                ProjectConstants.BOTTOM_SHEET_SCREEN_ADD ->
+                    GlobalScope.launch {
+                        dataStore.saveAndAddConvertCurrencys(
+                            SaveConvertCurrencys(
+                                currency.currencyCode,
+                                currency.icon
+                            )
+                        )
+                    }
+
+                ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY ->
+                    GlobalScope.launch {
+                        dataStore.editConvertCurrencys(
+                            SaveConvertCurrencys(
+                                currency.currencyCode,
+                                currency.icon
+                            ), editCurrency
+                        )
+                    }
+
+
             }
-
-        }
-        ProjectConstants.BOTTOM_SHEET_SCREEN_ADD->
-            GlobalScope.launch{
-                dataStore.saveAndAddConvertCurrencys(SaveConvertCurrencys(currency.currencyCode,currency.icon))
-            }
-        ProjectConstants.BOTTOM_SHEET_SCREEN_CONVERT_CURRENCY->
-            GlobalScope.launch{
-                dataStore.editConvertCurrencys(SaveConvertCurrencys(currency.currencyCode,currency.icon),editCurrency)
-            }
+            navController.navigate(HomeScreenDestination)
 
 
-
-    }
-    navController.navigate(HomeScreenDestination)
-
-
-}){
+        }){
     Row (modifier = Modifier
         .padding(top = 12.dp, start = 24.dp)
         .fillMaxWidth(), verticalAlignment = Alignment.CenterVertically){
@@ -165,16 +181,10 @@ Column (Modifier.fillMaxWidth().clickable {
             modifier = Modifier
                 .clip(CircleShape)
                 .size(50.dp)    )
-        val myCustomFont = androidx.compose.ui.text.font.FontFamily(
-            androidx.compose.ui.text.font.Font(
-                R.font.poppins_bold,
-                androidx.compose.ui.text.font.FontWeight.Bold
-            )
-        )
+
         Column {
-        Text(modifier = Modifier.padding(start = 16.dp),fontFamily = myCustomFont,text = currency.currencyCode, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
-        Text(modifier = Modifier.padding(start = 16.dp),fontFamily = myCustomFont,text = currency.currencyName, color = hintTextColor, textAlign = TextAlign.Center, fontSize = 12.sp)}
-        var inputSearch by remember { mutableStateOf("1") }
+        Text(modifier = Modifier.padding(start = 16.dp),fontFamily = MyCustomFont(),text = currency.currencyCode, color = primaryColor, textAlign = TextAlign.Center, fontSize = 18.sp)
+        Text(modifier = Modifier.padding(start = 16.dp),fontFamily = MyCustomFont(),text = currency.currencyName, color = hintTextColor, textAlign = TextAlign.Center, fontSize = 12.sp)} }
 
 
 
@@ -190,10 +200,10 @@ Column (Modifier.fillMaxWidth().clickable {
 
     }
 
-}
+
 
 @Composable
-fun searchTextFailed(viewModel: BaseCurrencyViewModel) {
+fun SearchTextFailed(viewModel: BaseCurrencyViewModel) {
     var inputSearch by remember { mutableStateOf("") }
     var isHintDisplay by remember { mutableStateOf(true)    }
     Box (){

@@ -5,13 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamal.currencyconversion.data.model.Currency
-import com.gamal.currencyconversion.di.AppModule
+import com.gamal.currencyconversion.data.network.remote.ApiClient
 import com.gamal.currencyconversion.ui.intent.CurrencyViewIntent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -24,7 +23,7 @@ class BaseCurrencyViewModel : ViewModel() {
     var cachedCurrencyList = listOf<Currency>()
 
     private val _viewState = MutableStateFlow(BaseCurrencyViewState())
-    val viewState: StateFlow<BaseCurrencyViewState> = _viewState.asStateFlow()
+    val viewState: StateFlow<BaseCurrencyViewState> = _viewState
     init {
         handleIntents()
     }
@@ -45,7 +44,7 @@ class BaseCurrencyViewModel : ViewModel() {
         viewModelScope.launch {
             _viewState.value = BaseCurrencyViewState(Loading = true)
             try {
-                val response = AppModule.provideCurrencyApi().getAllCurrency()
+                val response = ApiClient.provideCurrencyApi().getAllCurrency()
                 _viewState.value = BaseCurrencyViewState(currencies = response.supportedCurrenciesMap.values.toList())
                  _viewState.value.currencies.forEach { it ->
                      CurrencyList.value+=it
@@ -63,7 +62,6 @@ class BaseCurrencyViewModel : ViewModel() {
     }
 
     fun searchPokemonList(query: String) {
-        Log.d("ttt",query)
         val listToSearch = if(isSearchStarting) {
             CurrencyList.value
         } else {
@@ -84,7 +82,6 @@ class BaseCurrencyViewModel : ViewModel() {
                 (code?.contains(query.trim(), ignoreCase = true) == true) ||
                         (name?.equals(query.trim(), ignoreCase = true) == true)
             }
-            Log.d("ttt",results.size.toString()+"//")
 
             if(isSearchStarting) {
                 cachedCurrencyList = CurrencyList.value

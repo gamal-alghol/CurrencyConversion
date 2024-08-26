@@ -1,21 +1,16 @@
-package com.gamal.currencyconversion.di
+package com.gamal.currencyconversion.data.network.remote
 
-import com.gamal.currencyconversion.data.network.remote.Endpoints
-import com.gamal.currencyconversion.data.network.remote.CurrencyApi
-import dagger.Module
+
 import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
+
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.create
 import javax.inject.Singleton
 
-@Module
-@InstallIn(SingletonComponent::class)
-object  AppModule {
-    @Provides
-    @Singleton
+
+object  ApiClient {
+
     fun provideCurrencyApi(): CurrencyApi {
         return Retrofit.Builder()
             .baseUrl(Endpoints.BASE_URL)
@@ -23,8 +18,7 @@ object  AppModule {
             .build().create()
     }
 
-    @Provides
-    @Singleton
+
     fun provideCurrencyApi2(): CurrencyApi {
         return Retrofit.Builder()
             .baseUrl(Endpoints.BASE_URL2)

@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavOptions
 import com.gamal.currencyconversion.R
 import com.gamal.currencyconversion.data.local.DataStoreHelper
@@ -52,7 +53,7 @@ fun SplashScreen(navController: DestinationsNavigator){
     var scale = remember {
         androidx.compose.animation.core.Animatable(0f)
     }
-    val isBaseCurrencyChosen by dataStore.isBaseCurrencyChosen.collectAsState(initial = false)
+    val isBaseCurrencyChosen by dataStore.isBaseCurrencyChosen.collectAsStateWithLifecycle(false)
     LaunchedEffect(key1 = true ){
 
         scale.animateTo(targetValue = .8f, animationSpec = tween(

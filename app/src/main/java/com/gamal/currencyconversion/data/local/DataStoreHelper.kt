@@ -52,7 +52,6 @@ class DataStoreHelper(private val context: Context) {
     suspend fun editConvertCurrencys(itemToEdit: SaveConvertCurrencys, editCurrency: Int?) {
         val json = context.dataStore.data.first()[ConvertCurrencys] ?: ProjectConstants.INITIAL_CURRENCYS
         val existingArray: Array<SaveConvertCurrencys> = Gson().fromJson(json, Array<SaveConvertCurrencys>::class.java)
-        Log.d("ttt",editCurrency.toString()+"//"+itemToEdit.toString())
         existingArray.set(editCurrency!!,itemToEdit)
             // If the item doesn't exist, add it to the list
 

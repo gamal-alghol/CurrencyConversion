@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import com.gamal.currencyconversion.di.AppModule
+import com.gamal.currencyconversion.data.network.remote.ApiClient
 import com.gamal.currencyconversion.ui.intent.CurrencyViewIntent
 
 class CurrencyConvertedViewModel  : ViewModel()  {
@@ -45,12 +45,10 @@ class CurrencyConvertedViewModel  : ViewModel()  {
             _viewState.value = CurrencyConvertedViewState(Loading = true)
 
             try {
-                Log.d("ttt",baseCurrency+"/Base")
 
-                val response = AppModule.provideCurrencyApi2().getConvertCurrency(baseCurrency)
+                val response = ApiClient.provideCurrencyApi2().getConvertCurrency(baseCurrency)
                 Log.d("Full URL", "URL: $response")
                 val currencyConversionList = response.conversionRates.map { entry ->
-                    Log.d("ttt",entry.key)
 
                     CurrencyConversion(currencyCode = entry.key, conversionRate = entry.value)
                 }

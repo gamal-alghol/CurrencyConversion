@@ -10,6 +10,10 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.gamal.currencyconversion.R
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryColor,
@@ -32,6 +36,11 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
+@Composable
+fun MyCustomFont(): FontFamily {
+   return FontFamily(Font(R.font.poppins_bold, FontWeight.Bold))
+
+}
 
 @Composable
 fun CurrencyConversionTheme(
@@ -49,7 +58,6 @@ fun CurrencyConversionTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
